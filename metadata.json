@@ -1,0 +1,6 @@
+{
+  "name": "Shia Updates",
+  "description": "Shia community event discovery, attendance planning, organizer management, and community directory for Mumbai and across India.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

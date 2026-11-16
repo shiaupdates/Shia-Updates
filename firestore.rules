@@ -1,0 +1,554 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'shiaupdatesapp@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidAttendanceId(id) {
+      return id is string && id.size() >= 3 && id.size() <= 257 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Helpers
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'displayName', 'city', 'preferredLanguage',
+          'gender', 'preferredAudience', 'role', 'isActive', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'displayName', 'photoUrl', 'city', 'preferredLanguage',
+          'gender', 'preferredAudience', 'role', 'isActive', 'createdAt', 'updatedAt'
+        ])
+        && data.uid == userId
+        && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500))
+        && data.city is string && data.city.size() >= 2 && data.city.size() <= 80
+        && data.preferredLanguage in ['en', 'hi', 'ur']
+        && data.gender in ['male', 'female', 'prefer_not_to_say']
+        && data.preferredAudience in ['all', 'women', 'men', 'both']
+        && data.role in ['member', 'organizer', 'admin']
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivateInfo(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'email', 'notificationsEnabled', 'cityAlerts',
+          'eventReminders', 'privacyShowProfileToOrganizers', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'email', 'mobileNumber', 'notificationsEnabled', 'cityAlerts',
+          'eventReminders', 'privacyShowProfileToOrganizers', 'updatedAt'
+        ])
+        && data.uid == userId
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() <= 160
+        && (!('mobileNumber' in data) || (data.mobileNumber is string && data.mobileNumber.size() <= 24))
+        && data.notificationsEnabled is bool
+        && data.cityAlerts is bool
+        && data.eventReminders is bool
+        && data.privacyShowProfileToOrganizers is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCity(data, cityId) {
+      return data.keys().hasAll(['id', 'name', 'state', 'country', 'isActive', 'sortOrder', 'createdAt'])
+        && data.keys().hasOnly(['id', 'name', 'state', 'country', 'isActive', 'sortOrder', 'createdAt'])
+        && data.id == cityId
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 80
+        && data.state is string && data.state.size() >= 2 && data.state.size() <= 80
+        && data.country is string && data.country.size() >= 2 && data.country.size() <= 80
+        && data.isActive is bool
+        && data.sortOrder is int
+        && data.createdAt is timestamp;
+    }
+
+    function isValidCategory(data, categoryId) {
+      return data.keys().hasAll(['id', 'name', 'iconName', 'colorHex', 'isActive', 'sortOrder', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'nameHi', 'nameUr', 'iconName', 'colorHex', 'isActive', 'sortOrder', 'createdAt', 'updatedAt'])
+        && data.id == categoryId
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 60
+        && (!('nameHi' in data) || (data.nameHi is string && data.nameHi.size() <= 60))
+        && (!('nameUr' in data) || (data.nameUr is string && data.nameUr.size() <= 60))
+        && data.iconName is string && data.iconName.size() >= 2 && data.iconName.size() <= 40
+        && data.colorHex is string && data.colorHex.size() >= 4 && data.colorHex.size() <= 12
+        && data.isActive is bool
+        && data.sortOrder is int
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidEvent(data, eventId) {
+      return data.keys().hasAll([
+          'id', 'title', 'categoryId', 'categoryName', 'description', 'audienceType',
+          'eventDate', 'startTime', 'endTime', 'organizerId', 'organizerName', 'contactNumber',
+          'city', 'venueName', 'address', 'foodAvailable', 'status', 'moderationStatus',
+          'yesCount', 'noCount', 'maybeCount', 'totalResponses', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'title', 'categoryId', 'categoryName', 'description', 'posterUrl', 'audienceType',
+          'eventDate', 'endDate', 'startTime', 'endTime', 'preacherName', 'organizerId',
+          'organizerName', 'contactNumber', 'city', 'venueName', 'address', 'mapQuery', 'latitude', 'longitude',
+          'foodAvailable', 'foodDetails', 'additionalInfo', 'status', 'moderationStatus',
+          'yesCount', 'noCount', 'maybeCount', 'totalResponses', 'createdAt', 'updatedAt'
+        ])
+        && data.id == eventId
+        && isValidId(data.id)
+        && data.title is string && data.title.size() >= 3 && data.title.size() <= 140
+        && isValidId(data.categoryId)
+        && data.categoryName is string && data.categoryName.size() >= 2 && data.categoryName.size() <= 60
+        && data.description is string && data.description.size() >= 10 && data.description.size() <= 3000
+        && (!('posterUrl' in data) || (data.posterUrl is string && data.posterUrl.size() <= 500))
+        && data.audienceType in ['women', 'men', 'both']
+        && data.eventDate is string && data.eventDate.size() == 10 && data.eventDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && (!('endDate' in data) || (data.endDate is string && data.endDate.size() <= 10))
+        && data.startTime is string && data.startTime.size() == 5
+        && data.endTime is string && data.endTime.size() == 5
+        && (!('preacherName' in data) || (data.preacherName is string && data.preacherName.size() <= 120))
+        && isValidId(data.organizerId)
+        && data.organizerName is string && data.organizerName.size() >= 2 && data.organizerName.size() <= 120
+        && data.contactNumber is string && data.contactNumber.size() >= 6 && data.contactNumber.size() <= 24
+        && data.city is string && data.city.size() >= 2 && data.city.size() <= 80
+        && data.venueName is string && data.venueName.size() >= 2 && data.venueName.size() <= 140
+        && data.address is string && data.address.size() >= 4 && data.address.size() <= 300
+        && (!('mapQuery' in data) || (data.mapQuery is string && data.mapQuery.size() <= 300))
+        && (!('latitude' in data) || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90))
+        && (!('longitude' in data) || (data.longitude is number && data.longitude >= -180 && data.longitude <= 180))
+        && data.foodAvailable is bool
+        && (!('foodDetails' in data) || (data.foodDetails is string && data.foodDetails.size() <= 240))
+        && (!('additionalInfo' in data) || (data.additionalInfo is string && data.additionalInfo.size() <= 500))
+        && data.status in ['draft', 'published', 'cancelled', 'completed']
+        && data.moderationStatus in ['approved', 'pending', 'rejected']
+        && data.yesCount is int && data.yesCount >= 0
+        && data.noCount is int && data.noCount >= 0
+        && data.maybeCount is int && data.maybeCount >= 0
+        && data.totalResponses is int && data.totalResponses >= 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAttendance(data, attendanceId) {
+      return data.keys().hasAll(['id', 'eventId', 'userId', 'organizerId', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'eventId', 'userId', 'organizerId', 'status', 'createdAt', 'updatedAt'])
+        && data.id == attendanceId
+        && isValidAttendanceId(data.id)
+        && isValidId(data.eventId)
+        && isValidId(data.userId)
+        && isValidId(data.organizerId)
+        && data.id == (data.eventId + '_' + data.userId)
+        && data.status in ['yes', 'no', 'maybe']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBanner(data, bannerId) {
+      return data.keys().hasAll([
+          'id', 'title', 'type', 'imageUrl', 'city', 'startDate', 'endDate',
+          'placement', 'status', 'submittedByUid', 'clicks', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'title', 'subtitle', 'type', 'businessName', 'businessCategory',
+          'contactDetails', 'imageUrl', 'linkUrl', 'city', 'startDate', 'endDate',
+          'durationDays', 'placement', 'status', 'submittedByUid', 'clicks', 'createdAt', 'updatedAt'
+        ])
+        && data.id == bannerId
+        && isValidId(data.id)
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 120
+        && (!('subtitle' in data) || (data.subtitle is string && data.subtitle.size() <= 220))
+        && data.type in ['community', 'announcement', 'sponsored']
+        && (!('businessName' in data) || (data.businessName is string && data.businessName.size() <= 120))
+        && (!('businessCategory' in data) || (data.businessCategory is string && data.businessCategory.size() <= 80))
+        && (!('contactDetails' in data) || (data.contactDetails is string && data.contactDetails.size() <= 160))
+        && data.imageUrl is string && data.imageUrl.size() <= 500
+        && (!('linkUrl' in data) || (data.linkUrl is string && data.linkUrl.size() <= 400))
+        && data.city is string && data.city.size() >= 2 && data.city.size() <= 80
+        && data.startDate is string && data.startDate.size() == 10
+        && data.endDate is string && data.endDate.size() == 10
+        && (!('durationDays' in data) || (data.durationDays is int && data.durationDays >= 1 && data.durationDays <= 365))
+        && data.placement in ['home_carousel', 'explore_featured']
+        && data.status in ['pending', 'active', 'inactive', 'rejected']
+        && isValidId(data.submittedByUid)
+        && data.clicks is int && data.clicks >= 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDonation(data, donationId) {
+      return data.keys().hasAll([
+          'id', 'donorUid', 'donorName', 'amountInr', 'purpose',
+          'paymentMethod', 'referenceNumber', 'status', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'donorUid', 'donorName', 'amountInr', 'purpose',
+          'paymentMethod', 'referenceNumber', 'status', 'createdAt'
+        ])
+        && data.id == donationId
+        && isValidId(data.id)
+        && isValidId(data.donorUid)
+        && data.donorName is string && data.donorName.size() >= 1 && data.donorName.size() <= 100
+        && data.amountInr is int && data.amountInr >= 10 && data.amountInr <= 10000000
+        && data.purpose in ['general_community', 'majlis_niyaz', 'platform_support']
+        && data.paymentMethod in ['upi', 'card', 'netbanking']
+        && data.referenceNumber is string && data.referenceNumber.size() >= 6 && data.referenceNumber.size() <= 64
+        && data.status == 'completed'
+        && data.createdAt is timestamp;
+    }
+
+    function isValidNotification(data, notificationId) {
+      return data.keys().hasAll(['id', 'targetUid', 'city', 'title', 'message', 'type', 'createdAt'])
+        && data.keys().hasOnly(['id', 'targetUid', 'city', 'title', 'message', 'type', 'eventId', 'createdAt'])
+        && data.id == notificationId
+        && isValidId(data.id)
+        && data.targetUid is string && data.targetUid.size() >= 1 && data.targetUid.size() <= 128
+        && data.city is string && data.city.size() >= 2 && data.city.size() <= 80
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 140
+        && data.message is string && data.message.size() >= 2 && data.message.size() <= 400
+        && data.type in ['new_event', 'reminder', 'update', 'cancellation', 'announcement', 'ad_status']
+        && (!('eventId' in data) || (data.eventId is string && data.eventId.size() <= 128))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAppSetting(data, settingId) {
+      return data.keys().hasAll(['id', 'pastEventRetentionDays', 'autoArchivePastEvents', 'defaultCity', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'pastEventRetentionDays', 'autoArchivePastEvents', 'defaultCity', 'updatedAt'])
+        && data.id == settingId
+        && isValidId(data.id)
+        && data.pastEventRetentionDays is int && data.pastEventRetentionDays >= 7 && data.pastEventRetentionDays <= 3650
+        && data.autoArchivePastEvents is bool
+        && data.defaultCity is string && data.defaultCity.size() >= 2 && data.defaultCity.size() <= 80
+        && data.updatedAt is timestamp;
+    }
+
+    // Collection Rules
+
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin() && isValidId(userId);
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isVerified()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().role == 'member'
+        && incoming().isActive == true
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified()
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            isOwner(userId)
+            && incoming().role == existing().role
+            && incoming().isActive == existing().isActive
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'photoUrl', 'city', 'preferredLanguage',
+              'gender', 'preferredAudience', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+
+      match /private/{docId} {
+        allow get: if isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(docId)
+          && isOwner(userId)
+          && isValidUserPrivateInfo(incoming(), userId)
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isValidId(userId)
+          && isValidId(docId)
+          && (isOwner(userId) || isAdmin())
+          && isValidUserPrivateInfo(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'email', 'mobileNumber', 'notificationsEnabled', 'cityAlerts',
+            'eventReminders', 'privacyShowProfileToOrganizers', 'updatedAt'
+          ]);
+        allow delete: if isAdmin() && isValidId(userId) && isValidId(docId);
+      }
+
+      match /readNotifications/{notificationId} {
+        allow get: if isValidId(userId) && isValidId(notificationId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(notificationId)
+          && isOwner(userId)
+          && incoming().keys().hasAll(['notificationId', 'readAt'])
+          && incoming().keys().hasOnly(['notificationId', 'readAt'])
+          && incoming().notificationId == notificationId
+          && incoming().readAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    match /cities/{cityId} {
+      allow get: if isValidId(cityId) && (resource.data.isActive == true || isAdmin());
+      allow list: if resource.data.isActive == true || isAdmin();
+      allow create: if isAdmin()
+        && isValidId(cityId)
+        && isValidCity(incoming(), cityId)
+        && incoming().createdAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(cityId)
+        && isValidCity(incoming(), cityId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(cityId);
+    }
+
+    match /categories/{categoryId} {
+      allow get: if isValidId(categoryId) && (resource.data.isActive == true || isAdmin());
+      allow list: if resource.data.isActive == true || isAdmin();
+      allow create: if isAdmin()
+        && isValidId(categoryId)
+        && isValidCategory(incoming(), categoryId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(categoryId)
+        && isValidCategory(incoming(), categoryId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(categoryId);
+    }
+
+    match /events/{eventId} {
+      allow get: if isValidId(eventId) && (
+        (resource.data.status in ['published', 'completed'] && resource.data.moderationStatus == 'approved') ||
+        (isSignedIn() && resource.data.organizerId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow list: if (
+        (resource.data.status in ['published', 'completed'] && resource.data.moderationStatus == 'approved') ||
+        (isSignedIn() && resource.data.organizerId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow create: if isVerified()
+        && isValidId(eventId)
+        && isValidEvent(incoming(), eventId)
+        && incoming().organizerId == request.auth.uid
+        && incoming().yesCount == 0
+        && incoming().noCount == 0
+        && incoming().maybeCount == 0
+        && incoming().totalResponses == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/categories/$(incoming().categoryId))
+        && (isAdmin() || incoming().moderationStatus == 'approved');
+      allow update: if isVerified()
+        && isValidId(eventId)
+        && isValidEvent(incoming(), eventId)
+        && incoming().id == existing().id
+        && incoming().organizerId == existing().organizerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().organizerId == request.auth.uid
+            && existing().status != 'completed'
+            && incoming().yesCount == existing().yesCount
+            && incoming().noCount == existing().noCount
+            && incoming().maybeCount == existing().maybeCount
+            && incoming().totalResponses == existing().totalResponses
+            && incoming().moderationStatus == existing().moderationStatus
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'categoryId', 'categoryName', 'description', 'posterUrl',
+              'audienceType', 'eventDate', 'endDate', 'startTime', 'endTime',
+              'preacherName', 'organizerName', 'contactNumber', 'city', 'venueName',
+              'address', 'mapQuery', 'latitude', 'longitude', 'foodAvailable', 'foodDetails', 'additionalInfo',
+              'status', 'updatedAt'
+            ])
+          ) ||
+          (
+            existing().status == 'published'
+            && existing().moderationStatus == 'approved'
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'yesCount', 'noCount', 'maybeCount', 'totalResponses', 'updatedAt'
+            ])
+            && incoming().totalResponses == incoming().yesCount + incoming().noCount + incoming().maybeCount
+            && incoming().yesCount <= existing().yesCount + 1
+            && incoming().yesCount >= existing().yesCount - 1
+            && incoming().noCount <= existing().noCount + 1
+            && incoming().noCount >= existing().noCount - 1
+            && incoming().maybeCount <= existing().maybeCount + 1
+            && incoming().maybeCount >= existing().maybeCount - 1
+            && existsAfter(/databases/$(database)/documents/attendance/$(eventId + '_' + request.auth.uid))
+          )
+        );
+      allow delete: if isAdmin() && isValidId(eventId);
+    }
+
+    match /attendance/{attendanceId} {
+      allow get: if isValidAttendanceId(attendanceId) && isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.organizerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.organizerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isVerified()
+        && isValidAttendanceId(attendanceId)
+        && isValidAttendance(incoming(), attendanceId)
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/events/$(incoming().eventId))
+        && get(/databases/$(database)/documents/events/$(incoming().eventId)).data.organizerId == incoming().organizerId;
+      allow update: if isVerified()
+        && isValidAttendanceId(attendanceId)
+        && isValidAttendance(incoming(), attendanceId)
+        && existing().userId == request.auth.uid
+        && incoming().id == existing().id
+        && incoming().eventId == existing().eventId
+        && incoming().userId == existing().userId
+        && incoming().organizerId == existing().organizerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isAdmin() && isValidAttendanceId(attendanceId);
+    }
+
+    match /banners/{bannerId} {
+      allow get: if isValidId(bannerId) && (
+        resource.data.status == 'active' ||
+        (isSignedIn() && resource.data.submittedByUid == request.auth.uid) ||
+        isAdmin()
+      );
+      allow list: if (
+        resource.data.status == 'active' ||
+        (isSignedIn() && resource.data.submittedByUid == request.auth.uid) ||
+        isAdmin()
+      );
+      allow create: if isVerified()
+        && isValidId(bannerId)
+        && isValidBanner(incoming(), bannerId)
+        && incoming().submittedByUid == request.auth.uid
+        && incoming().clicks == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (isAdmin() || (incoming().status == 'pending' && incoming().type == 'sponsored'));
+      allow update: if isVerified()
+        && isValidId(bannerId)
+        && isValidBanner(incoming(), bannerId)
+        && incoming().id == existing().id
+        && incoming().submittedByUid == existing().submittedByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().status == 'active'
+            && incoming().clicks == existing().clicks + 1
+            && incoming().diff(existing()).affectedKeys().hasOnly(['clicks', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(bannerId);
+    }
+
+    match /donations/{donationId} {
+      allow get: if isValidId(donationId) && isSignedIn() && (
+        resource.data.donorUid == request.auth.uid || isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.donorUid == request.auth.uid || isAdmin()
+      );
+      allow create: if isVerified()
+        && isValidId(donationId)
+        && isValidDonation(incoming(), donationId)
+        && incoming().donorUid == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update, delete: if isAdmin() && isValidId(donationId);
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && isSignedIn() && (
+        resource.data.targetUid == 'all' ||
+        resource.data.targetUid == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.targetUid == 'all' ||
+        resource.data.targetUid == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isVerified()
+        && isValidId(notificationId)
+        && isValidNotification(incoming(), notificationId)
+        && incoming().createdAt == request.time
+        && (
+          isAdmin() ||
+          incoming().type in ['new_event', 'update', 'cancellation']
+        );
+      allow update, delete: if isAdmin() && isValidId(notificationId);
+    }
+
+    match /appSettings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        && isValidId(settingId)
+        && isValidAppSetting(incoming(), settingId)
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(settingId);
+    }
+  }
+}

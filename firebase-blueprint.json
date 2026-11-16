@@ -1,0 +1,276 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public community member profile and non-PII preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "photoUrl": { "type": "string", "maxLength": 500 },
+        "city": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "preferredLanguage": { "type": "string", "enum": ["en", "hi", "ur"] },
+        "gender": { "type": "string", "enum": ["male", "female", "prefer_not_to_say"] },
+        "preferredAudience": { "type": "string", "enum": ["all", "women", "men", "both"] },
+        "role": { "type": "string", "enum": ["member", "organizer", "admin"] },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "city", "preferredLanguage", "gender", "preferredAudience", "role", "isActive", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Isolated PII and notification/privacy settings for a user",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 160 },
+        "mobileNumber": { "type": "string", "maxLength": 24 },
+        "notificationsEnabled": { "type": "boolean" },
+        "cityAlerts": { "type": "boolean" },
+        "eventReminders": { "type": "boolean" },
+        "privacyShowProfileToOrganizers": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "notificationsEnabled", "cityAlerts", "eventReminders", "privacyShowProfileToOrganizers", "updatedAt"]
+    },
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Trusted administrator lookup record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 160 },
+        "grantedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "grantedAt"]
+    },
+    "City": {
+      "title": "City",
+      "description": "Supported Indian and international community cities",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "state": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "country": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "isActive": { "type": "boolean" },
+        "sortOrder": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "state", "country", "isActive", "sortOrder", "createdAt"]
+    },
+    "EventCategory": {
+      "title": "EventCategory",
+      "description": "Dynamically manageable religious and community event category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "nameHi": { "type": "string", "maxLength": 60 },
+        "nameUr": { "type": "string", "maxLength": 60 },
+        "iconName": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "colorHex": { "type": "string", "minLength": 4, "maxLength": 12 },
+        "isActive": { "type": "boolean" },
+        "sortOrder": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "iconName", "colorHex", "isActive", "sortOrder", "createdAt", "updatedAt"]
+    },
+    "CommunityEvent": {
+      "title": "CommunityEvent",
+      "description": "Shia community event with organizer, preacher, venue, and live attendance counts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 3, "maxLength": 140 },
+        "categoryId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "categoryName": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "description": { "type": "string", "minLength": 10, "maxLength": 3000 },
+        "posterUrl": { "type": "string", "maxLength": 500 },
+        "audienceType": { "type": "string", "enum": ["women", "men", "both"] },
+        "eventDate": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "endDate": { "type": "string", "maxLength": 10 },
+        "startTime": { "type": "string", "minLength": 5, "maxLength": 5 },
+        "endTime": { "type": "string", "minLength": 5, "maxLength": 5 },
+        "preacherName": { "type": "string", "maxLength": 120 },
+        "organizerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "organizerName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "contactNumber": { "type": "string", "minLength": 6, "maxLength": 24 },
+        "city": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "venueName": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "address": { "type": "string", "minLength": 4, "maxLength": 300 },
+        "mapQuery": { "type": "string", "maxLength": 300 },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "foodAvailable": { "type": "boolean" },
+        "foodDetails": { "type": "string", "maxLength": 240 },
+        "additionalInfo": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["draft", "published", "cancelled", "completed"] },
+        "moderationStatus": { "type": "string", "enum": ["approved", "pending", "rejected"] },
+        "yesCount": { "type": "integer" },
+        "noCount": { "type": "integer" },
+        "maybeCount": { "type": "integer" },
+        "totalResponses": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id", "title", "categoryId", "categoryName", "description", "audienceType",
+        "eventDate", "startTime", "endTime", "organizerId", "organizerName", "contactNumber",
+        "city", "venueName", "address", "foodAvailable", "status", "moderationStatus",
+        "yesCount", "noCount", "maybeCount", "totalResponses", "createdAt", "updatedAt"
+      ]
+    },
+    "EventAttendance": {
+      "title": "EventAttendance",
+      "description": "Private user attendance response (Yes, No, Maybe) per event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 257, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "organizerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "status": { "type": "string", "enum": ["yes", "no", "maybe"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "eventId", "userId", "organizerId", "status", "createdAt", "updatedAt"]
+    },
+    "PromotionalBanner": {
+      "title": "PromotionalBanner",
+      "description": "Homepage carousel graphic, community announcement, or approved paid business advertisement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "subtitle": { "type": "string", "maxLength": 220 },
+        "type": { "type": "string", "enum": ["community", "announcement", "sponsored"] },
+        "businessName": { "type": "string", "maxLength": 120 },
+        "businessCategory": { "type": "string", "maxLength": 80 },
+        "contactDetails": { "type": "string", "maxLength": 160 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "linkUrl": { "type": "string", "maxLength": 400 },
+        "city": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "startDate": { "type": "string", "minLength": 10, "maxLength": 10 },
+        "endDate": { "type": "string", "minLength": 10, "maxLength": 10 },
+        "durationDays": { "type": "integer" },
+        "placement": { "type": "string", "enum": ["home_carousel", "explore_featured"] },
+        "status": { "type": "string", "enum": ["pending", "active", "inactive", "rejected"] },
+        "submittedByUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "clicks": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "type", "imageUrl", "city", "startDate", "endDate", "placement", "status", "submittedByUid", "clicks", "createdAt", "updatedAt"]
+    },
+    "DonationRecord": {
+      "title": "DonationRecord",
+      "description": "Private donation transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "donorUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "donorName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "amountInr": { "type": "integer" },
+        "purpose": { "type": "string", "enum": ["general_community", "majlis_niyaz", "platform_support"] },
+        "paymentMethod": { "type": "string", "enum": ["upi", "card", "netbanking"] },
+        "referenceNumber": { "type": "string", "minLength": 6, "maxLength": 64 },
+        "status": { "type": "string", "enum": ["completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "donorUid", "donorName", "amountInr", "purpose", "paymentMethod", "referenceNumber", "status", "createdAt"]
+    },
+    "CommunityNotification": {
+      "title": "CommunityNotification",
+      "description": "City-scoped or user-scoped community notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "targetUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "city": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "title": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "message": { "type": "string", "minLength": 2, "maxLength": 400 },
+        "type": { "type": "string", "enum": ["new_event", "reminder", "update", "cancellation", "announcement", "ad_status"] },
+        "eventId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "targetUid", "city", "title", "message", "type", "createdAt"]
+    },
+    "NotificationRead": {
+      "title": "NotificationRead",
+      "description": "Per-user read receipt for notifications",
+      "type": "object",
+      "properties": {
+        "notificationId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "readAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["notificationId", "readAt"]
+    },
+    "AppSetting": {
+      "title": "AppSetting",
+      "description": "Administrative retention and platform policy configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "pastEventRetentionDays": { "type": "integer" },
+        "autoArchivePastEvents": { "type": "boolean" },
+        "defaultCity": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "pastEventRetentionDays", "autoArchivePastEvents", "defaultCity", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Public profile and language/city/audience preferences for each registered user"
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Private PII and notification/privacy settings strictly isolated to owner and admin"
+    },
+    "/users/{userId}/readNotifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NotificationRead" },
+      "description": "Per-user notification read receipts"
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Admin role grants"
+    },
+    "/cities/{cityId}": {
+      "schema": { "$ref": "#/entities/City" },
+      "description": "Available cities for Shia Updates"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/EventCategory" },
+      "description": "Admin-managed event categories"
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/CommunityEvent" },
+      "description": "Community events with real-time aggregate attendance counters"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": { "$ref": "#/entities/EventAttendance" },
+      "description": "Private Yes/No/Maybe attendance responses keyed by eventId_userId"
+    },
+    "/banners/{bannerId}": {
+      "schema": { "$ref": "#/entities/PromotionalBanner" },
+      "description": "Promotional carousel items and paid business advertisements"
+    },
+    "/donations/{donationId}": {
+      "schema": { "$ref": "#/entities/DonationRecord" },
+      "description": "Private community donation transactions"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/CommunityNotification" },
+      "description": "Community announcements, city event alerts, and user updates"
+    },
+    "/appSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/AppSetting" },
+      "description": "Global platform configuration such as past event retention policy"
+    }
+  }
+}
